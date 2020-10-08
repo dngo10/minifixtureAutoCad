@@ -13,6 +13,7 @@ using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
 using Autodesk.AutoCAD.Runtime;
 using System.Diagnostics;
+using Autodesk.AutoCAD.Colors;
 
 namespace MinimumFixtureRequirement
 {
@@ -21,21 +22,21 @@ namespace MinimumFixtureRequirement
         [CommandMethod("P_GetTable")]
         public void CreateTable()
         {
+            LayerHelper.CreateAndAssignALayer("TABLE");
             ac.Document doc = ac.Application.DocumentManager.MdiActiveDocument;
             Database db = doc.Database;
             //GET THE ID HERE..... ?
             string url = string.Format("{0}/#/minimumfixturerequirement", Goodie.hostName);
             Process process = Process.Start(url);
-            process.WaitForExit();
+            //process.WaitForExit();
             DialogResult result = MessageBox.Show("Press [OK] Button To Paste", "Gouvis Plumbing", MessageBoxButtons.OK);
-            //getClipboard web = new getClipboard();
+            getClipboard web = new getClipboard();
             if (result != DialogResult.OK) return;
             string json = Clipboard.GetText();
             if (string.IsNullOrEmpty(json)) return;
             JsonData data = GetInformation(json);
-            if(data != null)
-            {
-            }
+
+            EditOrCreateTable(data);
             return;
         }
 
@@ -53,7 +54,137 @@ namespace MinimumFixtureRequirement
 
         private void EditOrCreateTable(JsonData data)
         {
-            TotalFacilitiesRequired total = data.minimumfixture;
+            //TotalFacilitiesRequired total = data.minimumfixture;
+            ac.Document doc = ac.Application.DocumentManager.MdiActiveDocument;
+            Database db = doc.Database;
+
+            Table tb = new Table();
+            tb.TableStyle = db.Tablestyle;
+            
+
+            //Set Size First...
+            tb.SetSize(data.minimumfixture.fixtureUnitArray.Count + 3, 9);
+            tb.Cells.ContentColor = Color.FromColorIndex(ColorMethod.ByAci, 2);
+            tb.Cells.TextHeight = 0.09375;
+            tb.Columns[0].Width = 1.06;
+            tb.Columns[1].Width = 1.34 / 2;
+            tb.Columns[2].Width = 1.34 / 2;
+            tb.Columns[3].Width = 0.85;
+            tb.Columns[4].Width = 1.3 / 2;
+            tb.Columns[5].Width = 1.3 / 2;
+            tb.Columns[6].Width = 1.27;
+            tb.Columns[7].Width = 1.53;
+            tb.Columns[8].Width = 2.15;
+
+            //Table Title
+            CellRange titleRange = CellRange.Create(tb, 0, 0, 0, 8);
+            tb.Cells[0, 0].Value = "Minimum Number of Required Fixtures";
+            tb.Cells[0, 0].TextHeight = 3.0 / 16;
+
+            tb.Cells[1, 0].Value = "TYPE OF OCCUPANCY";
+
+            CellRange wcTitleRange = CellRange.Create(tb, 1, 1, 1, 2);
+            tb.MergeCells(wcTitleRange);
+            tb.Cells[1, 1].Value = "WATER CLOSETS";
+
+            tb.Cells[1, 3].Value = "URINALS";
+
+            CellRange lavatoriesTitle = CellRange.Create(tb, 1, 4, 1, 5);
+            tb.MergeCells(lavatoriesTitle);
+            tb.Cells[1, 4].Value = "LAVATORIES";
+
+            tb.Cells[1, 6].Value = "BATHTUBS OR SHOWERS";
+
+            tb.Cells[1, 7].Value = "DRINKINGFOUNTAINS/FACILITIES";
+            
+
+            tb.Cells[1, 8].Value = "OTHER";
+
+            //Fill Data...
+            int rIndex = 2;
+
+            
+
+            foreach(FixtureUnit unit in data.minimumfixture.fixtureUnitArray)
+            {
+                createRow(unit.outputUnits, tb, ref rIndex, data, unit.occupancy.type,  false);
+            }
+
+            createRow(data.minimumfixture.totalRequiredFixture , tb, ref rIndex, data, "TOTAL", true );
+
+
+            tb.Cells.DataFormat = "%lu2%pr0%";
+
+            using (Transaction tr = db.TransactionManager.StartTransaction())
+            {
+                BlockTableRecord btr = (BlockTableRecord)tr.GetObject(db.CurrentSpaceId, OpenMode.ForWrite);
+                btr.AppendEntity(tb);
+                tr.AddNewlyCreatedDBObject(tb, true);
+                tr.Commit();
+            }
+        }
+
+
+        private void createRow(Dictionary<string,double> itemsCount, Table tb, ref int rIndex, JsonData data, string name, bool isTotal)
+        {
+            tb.Cells[rIndex, 0].Value = name;
+            CellRange wcTitleRange1 = CellRange.Create(tb, rIndex, 1, rIndex, 2);
+            tb.MergeCells(wcTitleRange1);
+
+            CellRange lavatoriesTitle1 = CellRange.Create(tb, rIndex, 4, rIndex, 5);
+            tb.MergeCells(lavatoriesTitle1);
+
+            foreach (KeyValuePair<string, double> kv in itemsCount)
+            {
+                if (kv.Key == Table422_1Categories.waterClosets)
+                {
+
+                    tb.Cells[rIndex, 1].Value = kv.Value;
+                }
+                else if (kv.Key == Table422_1Categories.urinals)
+                {
+                    if(isTotal)
+                        tb.Cells[rIndex, 3].Value = kv.Value - data.minimumfixture.sliderValue;
+                    else
+                        tb.Cells[rIndex, 3].Value = kv.Value;
+                }
+                else if (kv.Key == Table422_1Categories.lavatories)
+                {
+                    if(isTotal)
+                        tb.Cells[rIndex, 4].Value = kv.Value + data.minimumfixture.sliderValue;
+                    else
+                        tb.Cells[rIndex, 4].Value = kv.Value;
+                }
+                else if (kv.Key == Table422_1Categories.bathtubsOrShowers)
+                {
+                    tb.Cells[rIndex, 6].Value = kv.Value;
+                }
+                else if (kv.Key == Table422_1Categories.drinkingFountains)
+                {
+                    tb.Cells[rIndex, 7].Value = kv.Value;
+                }
+            }
+            tb.Cells[rIndex, 8].Value = getOtherFixtures(itemsCount);
+            rIndex++;
+        }
+
+        /// <summary>
+        /// This function is the get all other fixtures and its value > 0 to put in on string.
+        /// </summary>
+        /// <param name="data"></param>
+        private string getOtherFixtures(Dictionary<string, double> itemsCounts)
+        {
+            string ans = "";
+            string oneLine = "{0} {1}(s)\n";
+            foreach (KeyValuePair<string, double> kv in itemsCounts)
+            {
+                if(Table422_1Categories.OtherSet.Contains(kv.Key) && kv.Value > 0)
+                {
+                    ans += string.Format(oneLine, kv.Value, kv.Key);
+                }
+            }
+
+            return ans;
         }
 
         private JsonData GetInformation(string json) {
@@ -146,6 +277,7 @@ namespace MinimumFixtureRequirement
             List<List<string>> otherOptions = new List<List<string>>();
             Dictionary<string, double> outputUnits = new Dictionary<string, double>();
             Dictionary<string, double> inputUnits = new Dictionary<string, double>();
+            TypeOfOccupancy occupancy = new TypeOfOccupancy();
             int choiceOption = 0;
             if (temp.unit != null)
             {
@@ -165,12 +297,14 @@ namespace MinimumFixtureRequirement
             if (temp.outputUnits != null) outputUnits = JsonConvert.DeserializeObject<Dictionary<string, double>>((string)temp.outputUnits);
             if (temp.inputUnits != null) inputUnits = JsonConvert.DeserializeObject<Dictionary<string, double>>((string)temp.inputUnits);
             if (temp.choiceOption != null) choiceOption = JsonConvert.DeserializeObject<int>((string)temp.choiceOption);
+            if (temp.occupancy != null) occupancy = JsonConvert.DeserializeObject<TypeOfOccupancy>((string)temp.occupancy);
             FixtureUnit funit = new FixtureUnit();
             funit.unit = unit;
             funit.outputUnits = outputUnits;
             funit.otherOptions = otherOptions;
             funit.inputUnits = inputUnits;
             funit.choiceOption = choiceOption;
+            funit.occupancy = occupancy;
             return funit;
         }
     }
@@ -203,15 +337,52 @@ namespace MinimumFixtureRequirement
         public List<List<string>> otherOptions { get; set;}
         public Dictionary<PairEntry, double> unit { get; set;} // the String here is PairEntry Json
         public int choiceOption { get; set; }
+        public TypeOfOccupancy occupancy;
     }
 
-    public class PairEntry
+    public class TypeOfOccupancy
     {
-        public string t1 { get; set; }
-        public string t2 {get; set;}
+        public string id;
+        public string type;
+        public string sub_type;
+        public string description;
     }
 
-    public class PairEntry2
+    public class LayerHelper
     {
+        public static void CreateAndAssignALayer(string layerName)
+        {
+            // Get the current document and database
+            ac.Document acDoc = ac.Application.DocumentManager.MdiActiveDocument;
+            Database acCurDb = acDoc.Database;
+
+            // Start a transaction
+            using (Transaction acTrans = acCurDb.TransactionManager.StartTransaction())
+            {
+                // Open the Layer table for read
+                LayerTable acLyrTbl;
+                acLyrTbl = acTrans.GetObject(acCurDb.LayerTableId,
+                                             OpenMode.ForRead) as LayerTable;
+
+                string sLayerName = layerName;
+
+                if (acLyrTbl.Has(sLayerName) == false)
+                {
+                    LayerTableRecord acLyrTblRec = new LayerTableRecord();
+
+                    // Assign the layer the ACI color 1 and a name
+                    acLyrTblRec.Color = Color.FromColorIndex(ColorMethod.ByAci, 13); // is like red.. but paler.
+                    acLyrTblRec.Name = sLayerName;
+
+                    // Upgrade the Layer table for write
+                    acLyrTbl.UpgradeOpen();
+
+                    // Append the new layer to the Layer table and the transaction
+                    acLyrTbl.Add(acLyrTblRec);
+                    acTrans.AddNewlyCreatedDBObject(acLyrTblRec, true);
+                }
+                acTrans.Commit();
+            }
+        }
     }
 }

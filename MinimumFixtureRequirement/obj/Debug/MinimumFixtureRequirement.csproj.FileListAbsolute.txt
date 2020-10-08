@@ -2,7 +2,6 @@ C:\Users\dngo\source\repos\MinimumFixtureRequirement\MinimumFixtureRequirement\b
 C:\Users\dngo\source\repos\MinimumFixtureRequirement\MinimumFixtureRequirement\bin\Debug\MinimumFixtureRequirement.pdb
 C:\Users\dngo\source\repos\MinimumFixtureRequirement\MinimumFixtureRequirement\bin\Debug\Newtonsoft.Json.dll
 C:\Users\dngo\source\repos\MinimumFixtureRequirement\MinimumFixtureRequirement\bin\Debug\Newtonsoft.Json.xml
-C:\Users\dngo\source\repos\MinimumFixtureRequirement\MinimumFixtureRequirement\obj\Debug\MinimumFixtureRequirement.csprojAssemblyReference.cache
 C:\Users\dngo\source\repos\MinimumFixtureRequirement\MinimumFixtureRequirement\obj\Debug\MinimumFixtureRequirement.getClipboard.resources
 C:\Users\dngo\source\repos\MinimumFixtureRequirement\MinimumFixtureRequirement\obj\Debug\MinimumFixtureRequirement.csproj.GenerateResource.cache
 C:\Users\dngo\source\repos\MinimumFixtureRequirement\MinimumFixtureRequirement\obj\Debug\MinimumFixtureRequirement.csproj.CoreCompileInputs.cache

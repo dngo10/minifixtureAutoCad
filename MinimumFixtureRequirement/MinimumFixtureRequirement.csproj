@@ -71,6 +71,7 @@
     <Compile Include="Goodie.cs" />
     <Compile Include="Main.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Table422_1Units.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

@@ -9,7 +9,7 @@ namespace MinimumFixtureRequirement
 {
     class Goodie
     {
-        public static string hostName = "http://localhost:8080";
+        public static string hostName = "https://gouvisgroup.xyz";
 
         public static bool IsPropertyExist(dynamic settings, string name)
         {
