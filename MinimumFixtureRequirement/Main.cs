@@ -14,6 +14,7 @@ using Autodesk.AutoCAD.Geometry;
 using Autodesk.AutoCAD.Runtime;
 using System.Diagnostics;
 using Autodesk.AutoCAD.Colors;
+using Autodesk.AutoCAD.GraphicsInterface;
 
 namespace MinimumFixtureRequirement
 {
@@ -60,10 +61,11 @@ namespace MinimumFixtureRequirement
 
             Table tb = new Table();
             tb.TableStyle = db.Tablestyle;
+            tb.Layer = "TABLE";
             
 
             //Set Size First...
-            tb.SetSize(data.minimumfixture.fixtureUnitArray.Count + 3, 9);
+            tb.SetSize(data.minimumfixture.fixtureUnitArray.Count + 4, 9);
             tb.Cells.ContentColor = Color.FromColorIndex(ColorMethod.ByAci, 2);
             tb.Cells.TextHeight = 0.09375;
             tb.Columns[0].Width = 1.06;
@@ -78,8 +80,11 @@ namespace MinimumFixtureRequirement
 
             //Table Title
             CellRange titleRange = CellRange.Create(tb, 0, 0, 0, 8);
+            tb.MergeCells(titleRange);
             tb.Cells[0, 0].Value = "Minimum Number of Required Fixtures";
             tb.Cells[0, 0].TextHeight = 3.0 / 16;
+
+            //Table Items
 
             tb.Cells[1, 0].Value = "TYPE OF OCCUPANCY";
 
@@ -99,6 +104,70 @@ namespace MinimumFixtureRequirement
             
 
             tb.Cells[1, 8].Value = "OTHER";
+
+            //Table Bottom:
+
+            if (!data.minimumfixture.totalRequiredFixture.ContainsKey(Table422_1Categories.urinals) &&
+                data.minimumfixture.sliderValue > 0)
+            {
+                data.minimumfixture.totalRequiredFixture.Add(Table422_1Categories.urinals, 0);
+            }
+
+            string bottomValue = "";
+
+            if (data.minimumfixture.totalFixtureBasedOnGender.ContainsKey(data.minimumfixture.totalFemaleCloset) &&
+                data.minimumfixture.femaleWaterClosetAddIn > 0)
+            {
+                if(data.minimumfixture.femaleWaterClosetAddIn > 0)
+                {
+                    bottomValue += string.Format("Female Water Closet: {0} + {1} (note 3)\n", data.minimumfixture.totalFixtureBasedOnGender[data.minimumfixture.totalFemaleCloset], data.minimumfixture.femaleWaterClosetAddIn);
+                }
+                else
+                {
+                    bottomValue += string.Format("Female Water Closet: {0}\n", data.minimumfixture.totalFixtureBasedOnGender[data.minimumfixture.totalFemaleCloset]);
+                }
+                
+            }
+
+            if (data.minimumfixture.totalFixtureBasedOnGender.ContainsKey(data.minimumfixture.totalMaleCloset) &&
+                data.minimumfixture.totalRequiredFixture.ContainsKey(Table422_1Categories.urinals)
+                )
+            {
+                if (data.minimumfixture.sliderValue > 0)
+                    bottomValue += string.Format("Male Water Closet: {0} - {1} (note 4)\n", data.minimumfixture.totalFixtureBasedOnGender[data.minimumfixture.totalMaleCloset], data.minimumfixture.sliderValue);
+                else
+                    bottomValue += string.Format("Male Water Closet: {0}\n", data.minimumfixture.totalFixtureBasedOnGender[data.minimumfixture.totalMaleCloset]);
+            }
+
+            if (data.minimumfixture.totalFixtureBasedOnGender.ContainsKey(data.minimumfixture.totalMaleUrinals) &&
+                data.minimumfixture.totalRequiredFixture.ContainsKey(Table422_1Categories.urinals)
+                )
+            {
+                if (data.minimumfixture.sliderValue > 0)
+                    bottomValue += string.Format("Male Urinal(s): {0} + {1} (note 4)\n", data.minimumfixture.totalFixtureBasedOnGender[data.minimumfixture.totalMaleUrinals], data.minimumfixture.sliderValue);
+                else
+                    bottomValue += string.Format("Male Urinal(s): {0}\n", data.minimumfixture.totalFixtureBasedOnGender[data.minimumfixture.totalMaleUrinals]);
+            }
+
+                if (data.minimumfixture.femaleWaterClosetAddIn > 0)
+            { 
+                bottomValue += string.Format("Notice: added {0} female lavatories -- satisfies note 3 requirement.\n", data.minimumfixture.femaleWaterClosetAddIn);
+            }
+            if(data.minimumfixture.sliderValue > 0)
+            {
+                bottomValue += string.Format("Notice: based on Note 4, it's okay to added {0} male urinals and remove {0} male water closet\n", data.minimumfixture.sliderValue);
+            }
+
+            bottomValue += "\nCalifornia Plumbing Code 2019 - Table 422.1 - Note:\n";
+            bottomValue += "(3) The total number of required water closets for females shall be not less than the total number of required water closets and urinals for males.\n";
+            bottomValue += "(4) For each urinal added in excess of the minimum required, one water closet shall be permitted to be deducted. The number of water closets shall not be reduced to less than two-thirds of the minimum requirement.\n";
+            bottomValue += "\n Created based on Table 422.1 California Plumbing Code 2019";
+            int bottomRowIndex = data.minimumfixture.fixtureUnitArray.Count + 4 - 1;
+            CellRange bottomRange = CellRange.Create(tb, bottomRowIndex , 0, bottomRowIndex, 8);
+            tb.Cells[bottomRowIndex, 0].Value = bottomValue;
+            tb.Cells[bottomRowIndex, 0].Alignment = CellAlignment.BottomLeft;
+            tb.MergeCells(bottomRange);
+            tb.Cells[0, 0].TextHeight = 3.0 / 16;
 
             //Fill Data...
             int rIndex = 2;
@@ -138,33 +207,42 @@ namespace MinimumFixtureRequirement
             {
                 if (kv.Key == Table422_1Categories.waterClosets)
                 {
-
-                    tb.Cells[rIndex, 1].Value = kv.Value;
+                    if (isTotal)
+                    {
+                        tb.Cells[rIndex, 1].Value = kv.Value - data.minimumfixture.sliderValue + data.minimumfixture.femaleWaterClosetAddIn;
+                    }
+                    else
+                    {
+                        tb.Cells[rIndex, 1].Value = kv.Value;
+                    }
+                    tb.Cells[rIndex, 1].Alignment = CellAlignment.MiddleRight;
                 }
                 else if (kv.Key == Table422_1Categories.urinals)
                 {
                     if(isTotal)
-                        tb.Cells[rIndex, 3].Value = kv.Value - data.minimumfixture.sliderValue;
+                        tb.Cells[rIndex, 3].Value = kv.Value + data.minimumfixture.sliderValue;
                     else
                         tb.Cells[rIndex, 3].Value = kv.Value;
+                    tb.Cells[rIndex, 3].Alignment = CellAlignment.MiddleRight;
                 }
                 else if (kv.Key == Table422_1Categories.lavatories)
                 {
-                    if(isTotal)
-                        tb.Cells[rIndex, 4].Value = kv.Value + data.minimumfixture.sliderValue;
-                    else
-                        tb.Cells[rIndex, 4].Value = kv.Value;
+                    tb.Cells[rIndex, 4].Value = kv.Value;
+                    tb.Cells[rIndex, 4].Alignment = CellAlignment.MiddleRight;
                 }
                 else if (kv.Key == Table422_1Categories.bathtubsOrShowers)
                 {
                     tb.Cells[rIndex, 6].Value = kv.Value;
+                    tb.Cells[rIndex, 6].Alignment = CellAlignment.MiddleRight;
                 }
                 else if (kv.Key == Table422_1Categories.drinkingFountains)
                 {
                     tb.Cells[rIndex, 7].Value = kv.Value;
+                    tb.Cells[rIndex, 7].Alignment = CellAlignment.MiddleRight;
                 }
             }
             tb.Cells[rIndex, 8].Value = getOtherFixtures(itemsCount);
+            tb.Cells[rIndex, 8].Alignment = CellAlignment.MiddleRight;
             rIndex++;
         }
 
@@ -212,6 +290,7 @@ namespace MinimumFixtureRequirement
 
         private TotalFacilitiesRequired GetTotalFacilitiesRequired(string dataStr)
         {
+
             TotalFacilitiesRequired total = new TotalFacilitiesRequired();
             if (!string.IsNullOrEmpty(dataStr))
             {
@@ -318,6 +397,10 @@ namespace MinimumFixtureRequirement
 
     public class TotalFacilitiesRequired
     {
+        public string totalFemaleCloset = "totalFemaleCloset";
+        public string totalMaleCloset = "totalMaleCloset";
+        public string totalMaleUrinals = "totalMaleUrinals";
+
         public string fixtureUnitForEdit { get; set; }
         public string outItem { get; set; }
         public bool isEditing { get; set; }
@@ -383,6 +466,26 @@ namespace MinimumFixtureRequirement
                 }
                 acTrans.Commit();
             }
+        }
+    }
+
+    public class TableJig : DrawJig
+    {
+        Table table;
+        
+        public TableJig()
+        {
+
+        }
+
+        protected override SamplerStatus Sampler(JigPrompts prompts)
+        {
+            throw new NotImplementedException();
+        }
+
+        protected override bool WorldDraw(WorldDraw draw)
+        {
+            throw new NotImplementedException();
         }
     }
 }
