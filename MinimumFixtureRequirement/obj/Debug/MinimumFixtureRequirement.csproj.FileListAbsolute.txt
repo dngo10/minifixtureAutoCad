@@ -8,3 +8,4 @@ C:\Users\dngo\source\repos\MinimumFixtureRequirement\MinimumFixtureRequirement\o
 C:\Users\dngo\source\repos\MinimumFixtureRequirement\MinimumFixtureRequirement\obj\Debug\MinimumFixtureRequirement.csproj.CopyComplete
 C:\Users\dngo\source\repos\MinimumFixtureRequirement\MinimumFixtureRequirement\obj\Debug\MinimumFixtureRequirement.dll
 C:\Users\dngo\source\repos\MinimumFixtureRequirement\MinimumFixtureRequirement\obj\Debug\MinimumFixtureRequirement.pdb
+C:\Users\dngo\source\repos\MinimumFixtureRequirement\MinimumFixtureRequirement\obj\Debug\MinimumFixtureRequirement.csprojAssemblyReference.cache
