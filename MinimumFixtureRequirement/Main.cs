@@ -22,7 +22,7 @@ namespace MinimumFixtureRequirement
     {
         private const string uriInit = "minimumfixturerequirement";
 
-        [CommandMethod("P_GetTable")]
+        [CommandMethod("P_GETMINIMUMFIXTURE")]
         public void CreateTable()
         {
             LayerHelper.CreateAndAssignALayer("TABLE");
@@ -35,7 +35,7 @@ namespace MinimumFixtureRequirement
             return;
         }
 
-        [CommandMethod("P_EditTable")]
+        [CommandMethod("P_EDITMINIMUMFIXTURE")]
         public void EditTable()
         {
             TypedValue[] acTypValAr = new TypedValue[2];
@@ -267,7 +267,17 @@ namespace MinimumFixtureRequirement
             string json;
             try
             {
-                json = Clipboard.GetText();
+                object obj = Clipboard.GetText();
+                Clipboard.Clear();
+                if(obj is string)
+                {
+                    json = obj as string;
+                }
+                else
+                {
+                    return null;
+                }
+                
             }
             catch
             {
@@ -362,26 +372,34 @@ namespace MinimumFixtureRequirement
         }
 
         private JsonData GetInformation(string json) {
-            Dictionary<string,string> map = JsonConvert.DeserializeObject<Dictionary<string,string>>(json);
-            JsonData jData = new JsonData();
-            if(map != null)
+            try
             {
-                if (map.ContainsKey("id") && map.ContainsKey("data"))
+                Dictionary<string, string> map = JsonConvert.DeserializeObject<Dictionary<string, string>>(json);
+                JsonData jData = new JsonData();
+                if (map != null)
                 {
-                    int id = -1;
-                    dynamic data = JsonConvert.DeserializeObject(map["data"]);
-                    if (int.TryParse(map["id"], out id))
+                    if (map.ContainsKey("id") && map.ContainsKey("data"))
                     {
-                        jData.id = id;
+                        int id = -1;
+                        dynamic data = JsonConvert.DeserializeObject(map["data"]);
+                        if (int.TryParse(map["id"], out id))
+                        {
+                            jData.id = id;
+                        }
+
+                        TotalFacilitiesRequired total = GetTotalFacilitiesRequired(map["data"]);
+                        jData.minimumfixture = total;
+
+                        return jData;
                     }
-
-                    TotalFacilitiesRequired total = GetTotalFacilitiesRequired(map["data"]);
-                    jData.minimumfixture = total;
-
-                    return jData;
                 }
+                return null;
             }
-            return null;
+            catch
+            {
+                return null;
+            }
+
         }
 
         private TotalFacilitiesRequired GetTotalFacilitiesRequired(string dataStr)
